@@ -16,7 +16,17 @@ const Task = require('./models/Task'); // Import Task model
 const app = express();
 
 // Middleware
-app.use(cors({ origin: 'http://localhost:3000' }));
+const allowedOrigins = ['http://localhost:3000', 'https://nirpeksh.com'];
+app.use(cors({
+  origin: function (origin, callback) {
+    if (allowedOrigins.includes(origin) || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
+
 app.use(express.json());
 
 // Connect to MongoDB
@@ -119,4 +129,5 @@ cron.schedule('0 20 * * *', async () => {
 
 // Port setup
 const PORT = process.env.PORT || 5002;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+//app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
