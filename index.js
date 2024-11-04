@@ -1,6 +1,5 @@
 // backend/index.js
 const http = require('http');
-
 const express = require('express');
 const connectDB = require('./config/db');
 require('dotenv').config();
@@ -25,7 +24,7 @@ const httpsOptions = {
 };
 
 // Middleware
-const allowedOrigins = ['http://localhost:3000', 'https://nirpeksh.com'];
+const allowedOrigins = ['http://localhost:3000','http://nirpeksh-frontend.s3-website-us-east-1.amazonaws.com', 'https://nirpeksh.com'];
 app.use(cors({
   origin: function (origin, callback) {
     if (allowedOrigins.includes(origin) || !origin) {
