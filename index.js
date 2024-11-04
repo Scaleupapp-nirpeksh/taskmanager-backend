@@ -12,8 +12,15 @@ const taskCategoryRoutes = require('./routes/taskCategoryRoutes');
 const { notifyDueTasks, notifyOverdueTasks } = require('./services/whatsappNotification'); // Import notification functions
 const User = require('./models/User'); // Import User model
 const Task = require('./models/Task'); // Import Task model
-
+const https = require('https');
+const fs = require('fs');
 const app = express();
+
+
+const httpsOptions = {
+  key: fs.readFileSync('/etc/letsencrypt/live/nirpeksh.com/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/nirpeksh.com/fullchain.pem')
+};
 
 // Middleware
 const allowedOrigins = ['http://localhost:3000', 'https://nirpeksh.com'];
@@ -26,6 +33,7 @@ app.use(cors({
     }
   }
 }));
+
 
 app.use(express.json());
 
@@ -127,7 +135,15 @@ cron.schedule('0 20 * * *', async () => {
   }
 });
 
-// Port setup
-const PORT = process.env.PORT || 80;
-//app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+// HTTPS Server on port 443
+https.createServer(httpsOptions, app).listen(443, () => {
+  console.log('HTTPS Server running on port 443');
+});
+
+// HTTP Server on port 80 to redirect to HTTPS
+http.createServer((req, res) => {
+  res.writeHead(301, { "Location": `https://${req.headers.host}${req.url}` });
+  res.end();
+}).listen(80, () => {
+  console.log('HTTP Server running on port 80 and redirecting to HTTPS');
+});
