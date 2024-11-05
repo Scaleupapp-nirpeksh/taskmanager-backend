@@ -28,7 +28,12 @@ const HTTPS_PORT = 443;
 const HTTP_PORT = 3000;
 
 // Allow all origins in CORS
-const allowedOrigins = ['https://nirpeksh.com', 'https://master.dri5c16mhxrkg.amplifyapp.com','https://nirpekshnandan.com'];
+const allowedOrigins = [
+  'https://nirpeksh.com',
+  'https://nirpekshnandan.com',
+  'https://master.dri5c16mhxrkg.amplifyapp.com',
+  'https://prod.d13hd8ekmv548z.amplifyapp.com'
+];
 app.use(cors({
   origin: function (origin, callback) {
     if (allowedOrigins.includes(origin) || !origin) {
