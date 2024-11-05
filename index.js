@@ -13,28 +13,13 @@ const taskCategoryRoutes = require('./routes/taskCategoryRoutes');
 const { notifyDueTasks, notifyOverdueTasks } = require('./services/whatsappNotification'); // Import notification functions
 const User = require('./models/User'); // Import User model
 const Task = require('./models/Task'); // Import Task model
-const https = require('https');
-const fs = require('fs');
+
 const app = express();
 
-
-const httpsOptions = {
-  key: fs.readFileSync('/etc/letsencrypt/live/nirpeksh.com/privkey.pem'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/nirpeksh.com/fullchain.pem')
-};
-
-// Middleware
-const allowedOrigins = ['http://localhost:3000','http://nirpeksh-frontend.s3-website-us-east-1.amazonaws.com', 'https://nirpeksh.com','https://master.d1z83m30x29pgv.amplifyapp.com'];
+// Allow all origins in CORS
 app.use(cors({
-  origin: function (origin, callback) {
-    if (allowedOrigins.includes(origin) || !origin) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  }
+  origin: '*',
 }));
-
 
 app.use(express.json());
 
@@ -46,37 +31,37 @@ app.get('/', (req, res) => res.send('API is running...'));
 
 // Test Route for Due Tasks Notification
 app.get('/test/notify-due-tasks', async (req, res) => {
-    const users = await User.find();
-    for (const user of users) {
-      const today = new Date();
-      const dueTasks = await Task.find({
-        assignedTo: user._id,
-        deadline: { $lte: new Date(today.setHours(23, 59, 59, 999)), $gte: new Date(today.setHours(0, 0, 0, 0)) },
-        status: { $ne: 'Completed' },
-      });
-  
-      if (dueTasks.length > 0) {
-        await notifyDueTasks(user.phone_number, user.name, dueTasks); // Now passing user's name
-      }
+  const users = await User.find();
+  for (const user of users) {
+    const today = new Date();
+    const dueTasks = await Task.find({
+      assignedTo: user._id,
+      deadline: { $lte: new Date(today.setHours(23, 59, 59, 999)), $gte: new Date(today.setHours(0, 0, 0, 0)) },
+      status: { $ne: 'Completed' },
+    });
+
+    if (dueTasks.length > 0) {
+      await notifyDueTasks(user.phone_number, user.name, dueTasks); // Now passing user's name
     }
-    res.send('Due task notifications sent.');
+  }
+  res.send('Due task notifications sent.');
 });
 
 // Test Route for Overdue Tasks Notification
 app.get('/test/notify-overdue-tasks', async (req, res) => {
-    const users = await User.find();
-    for (const user of users) {
-      const overdueTasks = await Task.find({
-        assignedTo: user._id,
-        deadline: { $lt: new Date() },
-        status: { $ne: 'Completed' },
-      });
-  
-      if (overdueTasks.length > 0) {
-        await notifyOverdueTasks(user.phone_number, user.name, overdueTasks); // Now passing user's name
-      }
+  const users = await User.find();
+  for (const user of users) {
+    const overdueTasks = await Task.find({
+      assignedTo: user._id,
+      deadline: { $lt: new Date() },
+      status: { $ne: 'Completed' },
+    });
+
+    if (overdueTasks.length > 0) {
+      await notifyOverdueTasks(user.phone_number, user.name, overdueTasks); // Now passing user's name
     }
-    res.send('Overdue task notifications sent.');
+  }
+  res.send('Overdue task notifications sent.');
 });
 
 // Routes
@@ -128,22 +113,14 @@ cron.schedule('0 20 * * *', async () => {
       if (Array.isArray(overdueTasks) && overdueTasks.length > 0) {
         await notifyOverdueTasks(user.phone_number, overdueTasks);
       }
-      
     }
   } catch (error) {
     console.error('Error sending daily overdue notifications:', error);
   }
 });
 
-// HTTPS Server on port 443
-https.createServer(httpsOptions, app).listen(443, () => {
-  console.log('HTTPS Server running on port 443');
-});
-
-// HTTP Server on port 80 to redirect to HTTPS
-http.createServer((req, res) => {
-  res.writeHead(301, { "Location": `https://${req.headers.host}${req.url}` });
-  res.end();
-}).listen(80, () => {
-  console.log('HTTP Server running on port 80 and redirecting to HTTPS');
+// Server setup
+const PORT = process.env.PORT || 80;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
