@@ -35,10 +35,14 @@ const sendWhatsAppTemplateMessage = async (to, templateSid, templateData) => {
   }
 };
 
-// Notify user of due tasks
 const notifyDueTasks = async (phoneNumber, dueTasks) => {
   if (!phoneNumber) {
     console.error("Phone number is undefined for due tasks notification.");
+    return;
+  }
+
+  if (!Array.isArray(dueTasks)) {
+    console.error("Expected an array for dueTasks, but received:", dueTasks);
     return;
   }
 
@@ -60,10 +64,15 @@ const notifyDueTasks = async (phoneNumber, dueTasks) => {
   }
 };
 
-// Notify user of overdue tasks
+
 const notifyOverdueTasks = async (phoneNumber, overdueTasks) => {
   if (!phoneNumber) {
     console.error("Phone number is undefined for overdue tasks notification.");
+    return;
+  }
+
+  if (!Array.isArray(overdueTasks)) {
+    console.error("Expected an array for overdueTasks, but received:", overdueTasks);
     return;
   }
 
