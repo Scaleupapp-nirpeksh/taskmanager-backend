@@ -17,9 +17,17 @@ const Task = require('./models/Task'); // Import Task model
 const app = express();
 
 // Allow all origins in CORS
+const allowedOrigins = ['https://nirpeksh.com', 'https://master.dri5c16mhxrkg.amplifyapp.com'];
 app.use(cors({
-  origin: '*',
+  origin: function (origin, callback) {
+    if (allowedOrigins.includes(origin) || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
 }));
+
 
 app.use(express.json());
 
