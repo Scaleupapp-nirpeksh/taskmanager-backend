@@ -37,19 +37,22 @@ const allowedOrigins = [
   'https://prod.d13hd8ekmv548z.amplifyapp.com',
   'https://master.dp6erxymzofdg.amplifyapp.com',
 ];
-app.use(cors(
-  
-  {
-  origin: function (origin, callback) {
+
+app.use(cors({
+  origin: (origin, callback) => {
     if (allowedOrigins.includes(origin) || !origin) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
-  }
-}
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allow all required methods
+  credentials: true, // Allow credentials if needed
+}));
 
-));
+// Handle preflight OPTIONS requests for all routes
+app.options('*', cors());
+
 
 
 app.use(express.json());
@@ -152,7 +155,7 @@ cron.schedule('0 20 * * *', async () => {
   }
 });
 
-/*
+//For prod Run
 // Start HTTPS server
 https.createServer(httpsOptions, app).listen(HTTPS_PORT, () => {
   console.log(`HTTPS Server running on port ${HTTPS_PORT}`);
@@ -165,8 +168,12 @@ http.createServer((req, res) => {
 }).listen(HTTP_PORT, () => {
   console.log(`HTTP Server running on port ${HTTP_PORT} and redirecting to HTTPS`);
 });
-*/
+
+
+//For Local Run
+/*
 // Start HTTP server
 http.createServer(app).listen(HTTP_PORT, () => {
   console.log(`HTTP Server running on port ${HTTP_PORT}`);
 });
+*/
