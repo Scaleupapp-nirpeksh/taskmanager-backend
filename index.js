@@ -103,9 +103,8 @@ cron.schedule('0 8 * * *', async () => {
         status: { $ne: 'Completed' },
       });
 
-      if (dueTasks.length > 0) {
-        // Send WhatsApp notification with all tasks due today
-        await notifyDueTasks(user.phone_number, user.name, dueTasks); // Pass the user's name
+      if (Array.isArray(dueTasks) && dueTasks.length > 0) {
+        await notifyDueTasks(user.phone_number, dueTasks);
       }
     }
   } catch (error) {
@@ -126,10 +125,10 @@ cron.schedule('0 20 * * *', async () => {
         status: { $ne: 'Completed' },
       });
 
-      if (overdueTasks.length > 0) {
-        // Send WhatsApp notification with all overdue tasks
-        await notifyOverdueTasks(user.phone_number, user.name, overdueTasks); // Pass the user's name
+      if (Array.isArray(overdueTasks) && overdueTasks.length > 0) {
+        await notifyOverdueTasks(user.phone_number, overdueTasks);
       }
+      
     }
   } catch (error) {
     console.error('Error sending daily overdue notifications:', error);
