@@ -98,7 +98,10 @@ app.get('/test/notify-overdue-tasks', async (req, res) => {
   res.send('Overdue task notifications sent.');
 });
 
-
+app.use((req, res, next) => {
+  console.log('Request Headers:', req.headers);
+  next();
+});
 
 // Routes
 app.use('/auth', require('./routes/authRoutes'));
