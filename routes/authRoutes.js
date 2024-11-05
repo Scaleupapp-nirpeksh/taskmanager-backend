@@ -7,7 +7,7 @@ const router = express.Router();
 router.post('/register', registerUser);
 
 // POST /auth/login - Login user
-router.post('/login', loginUser);
+router.post('/login/?', loginUser);
 
 console.log('Auth routes file loaded');
 // Test route to verify registration
