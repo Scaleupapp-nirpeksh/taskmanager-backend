@@ -1,5 +1,7 @@
 // backend/index.js
 const http = require('http');
+const https = require('https');
+const fs = require('fs');
 const express = require('express');
 const connectDB = require('./config/db');
 require('dotenv').config();
@@ -15,6 +17,14 @@ const User = require('./models/User'); // Import User model
 const Task = require('./models/Task'); // Import Task model
 
 const app = express();
+
+// Load SSL certificates
+const httpsOptions = {
+  key: fs.readFileSync('/etc/letsencrypt/live/nirpeksh.com/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/nirpeksh.com/fullchain.pem')
+};
+
+const PORT = 443;
 
 // Allow all origins in CORS
 const allowedOrigins = ['https://nirpeksh.com', 'https://master.dri5c16mhxrkg.amplifyapp.com'];
@@ -127,8 +137,12 @@ cron.schedule('0 20 * * *', async () => {
   }
 });
 
+http.createServer((req, res) => {
+  res.writeHead(301, { "Location": `https://${req.headers.host}${req.url}` });
+  res.end();
+}).listen(80);
 // Server setup
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Start HTTPS server
+https.createServer(httpsOptions, app).listen(PORT, () => {
+  console.log(`HTTPS Server running on port ${PORT}`);
+})
