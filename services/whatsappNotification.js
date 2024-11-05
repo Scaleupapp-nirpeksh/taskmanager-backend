@@ -54,7 +54,7 @@ const notifyDueTasks = async (phoneNumber, dueTasks) => {
     const templateData = [
       'User', // Placeholder for the user's name
       taskList,
-      'https://www.nirpeksh.com'
+      'https://www.nirpekshnandan.com'
     ];
 
     await sendWhatsAppTemplateMessage(phoneNumber, 'HXa9ff7c48552b5723c039197a4e640519', templateData);
@@ -84,7 +84,7 @@ const notifyOverdueTasks = async (phoneNumber, overdueTasks) => {
     const templateData = [
       'User', // Placeholder for the user's name
       taskMessages,
-      'https://www.nirpeksh.com'
+      'https://www.nirpekshnandan.com'
     ];
 
     await sendWhatsAppTemplateMessage(phoneNumber, 'HXa5a86cda484eacba23156c0a437c6b2c', templateData);

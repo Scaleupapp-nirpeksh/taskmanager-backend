@@ -20,15 +20,15 @@ const app = express();
 
 // Load SSL certificates
 const httpsOptions = {
-  key: fs.readFileSync('/etc/letsencrypt/live/nirpeksh.com/privkey.pem'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/nirpeksh.com/fullchain.pem')
+  key: fs.readFileSync('/etc/letsencrypt/live/nirpekshnandan.com/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/nirpekshnandan.com/fullchain.pem')
 };
 
 const HTTPS_PORT = 443;
 const HTTP_PORT = 80;
 
 // Allow all origins in CORS
-const allowedOrigins = ['https://nirpeksh.com', 'https://master.dri5c16mhxrkg.amplifyapp.com'];
+const allowedOrigins = ['https://nirpeksh.com', 'https://master.dri5c16mhxrkg.amplifyapp.com','https://nirpekshnandan.com'];
 app.use(cors({
   origin: function (origin, callback) {
     if (allowedOrigins.includes(origin) || !origin) {
