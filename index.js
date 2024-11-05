@@ -24,7 +24,7 @@ const httpsOptions = {
 };
 
 // Middleware
-const allowedOrigins = ['http://localhost:3000','http://nirpeksh-frontend.s3-website-us-east-1.amazonaws.com', 'https://nirpeksh.com'];
+const allowedOrigins = ['http://localhost:3000','http://nirpeksh-frontend.s3-website-us-east-1.amazonaws.com', 'https://nirpeksh.com','https://master.d1z83m30x29pgv.amplifyapp.com'];
 app.use(cors({
   origin: function (origin, callback) {
     if (allowedOrigins.includes(origin) || !origin) {
