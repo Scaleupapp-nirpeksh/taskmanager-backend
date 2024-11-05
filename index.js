@@ -24,7 +24,8 @@ const httpsOptions = {
   cert: fs.readFileSync('/etc/letsencrypt/live/nirpeksh.com/fullchain.pem')
 };
 
-const PORT = 443;
+const HTTPS_PORT = 443;
+const HTTP_PORT = 80;
 
 // Allow all origins in CORS
 const allowedOrigins = ['https://nirpeksh.com', 'https://master.dri5c16mhxrkg.amplifyapp.com'];
@@ -137,12 +138,15 @@ cron.schedule('0 20 * * *', async () => {
   }
 });
 
+// Start HTTPS server
+https.createServer(httpsOptions, app).listen(HTTPS_PORT, () => {
+  console.log(`HTTPS Server running on port ${HTTPS_PORT}`);
+});
+
+// Optional: Start an HTTP server to redirect traffic to HTTPS
 http.createServer((req, res) => {
   res.writeHead(301, { "Location": `https://${req.headers.host}${req.url}` });
   res.end();
-}).listen(80);
-// Server setup
-// Start HTTPS server
-https.createServer(httpsOptions, app).listen(PORT, () => {
-  console.log(`HTTPS Server running on port ${PORT}`);
-})
+}).listen(HTTP_PORT, () => {
+  console.log(`HTTP Server running on port ${HTTP_PORT} and redirecting to HTTPS`);
+});
