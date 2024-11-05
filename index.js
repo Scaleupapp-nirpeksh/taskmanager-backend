@@ -18,14 +18,16 @@ const Task = require('./models/Task'); // Import Task model
 
 const app = express();
 
+
 // Load SSL certificates
 const httpsOptions = {
   key: fs.readFileSync('/etc/letsencrypt/live/nirpekshnandan.com/privkey.pem'),
   cert: fs.readFileSync('/etc/letsencrypt/live/nirpekshnandan.com/fullchain.pem')
 };
 
-const HTTPS_PORT = 3001;
-const HTTP_PORT = 3000;
+
+const HTTPS_PORT = 443;
+const HTTP_PORT = 3001;
 
 // Allow all origins in CORS
 const allowedOrigins = [
@@ -35,7 +37,9 @@ const allowedOrigins = [
   'https://prod.d13hd8ekmv548z.amplifyapp.com',
   'https://master.dp6erxymzofdg.amplifyapp.com',
 ];
-app.use(cors({
+app.use(cors(
+  
+  {
   origin: function (origin, callback) {
     if (allowedOrigins.includes(origin) || !origin) {
       callback(null, true);
@@ -43,7 +47,9 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   }
-}));
+}
+
+));
 
 
 app.use(express.json());
@@ -88,6 +94,8 @@ app.get('/test/notify-overdue-tasks', async (req, res) => {
   }
   res.send('Overdue task notifications sent.');
 });
+
+
 
 // Routes
 app.use('/auth', require('./routes/authRoutes'));
@@ -144,6 +152,7 @@ cron.schedule('0 20 * * *', async () => {
   }
 });
 
+/*
 // Start HTTPS server
 https.createServer(httpsOptions, app).listen(HTTPS_PORT, () => {
   console.log(`HTTPS Server running on port ${HTTPS_PORT}`);
@@ -155,4 +164,9 @@ http.createServer((req, res) => {
   res.end();
 }).listen(HTTP_PORT, () => {
   console.log(`HTTP Server running on port ${HTTP_PORT} and redirecting to HTTPS`);
+});
+*/
+// Start HTTP server
+http.createServer(app).listen(HTTP_PORT, () => {
+  console.log(`HTTP Server running on port ${HTTP_PORT}`);
 });
