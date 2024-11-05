@@ -24,7 +24,7 @@ const httpsOptions = {
   cert: fs.readFileSync('/etc/letsencrypt/live/nirpekshnandan.com/fullchain.pem')
 };
 
-const HTTPS_PORT = 443;
+const HTTPS_PORT = 3001;
 const HTTP_PORT = 3000;
 
 // Allow all origins in CORS
@@ -33,7 +33,7 @@ const allowedOrigins = [
   'https://nirpekshnandan.com',
   'https://master.dri5c16mhxrkg.amplifyapp.com',
   'https://prod.d13hd8ekmv548z.amplifyapp.com',
-  'https://master.dp6erxymzofdg.amplifyapp.com'
+  'https://master.dp6erxymzofdg.amplifyapp.com',
 ];
 app.use(cors({
   origin: function (origin, callback) {
