@@ -35,6 +35,7 @@ const allowedOrigins = [
   'https://master.dri5c16mhxrkg.amplifyapp.com',
   'https://prod.d13hd8ekmv548z.amplifyapp.com',
   'https://master.dp6erxymzofdg.amplifyapp.com',
+  'https://master.d2rgoocsk44jed.amplifyapp.com'
 ];
 
 // CORS configuration
