@@ -1,4 +1,3 @@
-
 // backend/index.js
 
 const http = require('http');
@@ -20,23 +19,23 @@ const Task = require('./models/Task');
 
 const app = express();
 
-// Load SSL certificates
+// Load SSL certificates for HTTPS
 const httpsOptions = {
   key: fs.readFileSync('/etc/letsencrypt/live/nirpekshnandan.com/privkey.pem'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/nirpekshnandan.com/fullchain.pem')
+  cert: fs.readFileSync('/etc/letsencrypt/live/nirpekshnandan.com/fullchain.pem'),
 };
 
 const HTTPS_PORT = 443;
-const HTTP_PORT = 3001;
+const HTTP_PORT = 80;
 
-// Define allowed origins
+// Define allowed origins for CORS
 const allowedOrigins = [
   'https://nirpeksh.com',
   'https://nirpekshnandan.com',
   'https://master.dri5c16mhxrkg.amplifyapp.com',
   'https://prod.d13hd8ekmv548z.amplifyapp.com',
   'https://master.dp6erxymzofdg.amplifyapp.com',
-  'https://master.d2rgoocsk44jed.amplifyapp.com'
+  'https://master.d2rgoocsk44jed.amplifyapp.com',
 ];
 
 // CORS configuration
@@ -70,45 +69,11 @@ connectDB();
 // Basic Route
 app.get('/', (req, res) => res.send('API is running...'));
 
-// Test Routes for Notifications
-app.get('/test/notify-due-tasks', async (req, res) => {
-  const users = await User.find();
-  for (const user of users) {
-    const today = new Date();
-    const dueTasks = await Task.find({
-      assignedTo: user._id,
-      deadline: { $lte: new Date(today.setHours(23, 59, 59, 999)), $gte: new Date(today.setHours(0, 0, 0, 0)) },
-      status: { $ne: 'Completed' },
-    });
-
-    if (dueTasks.length > 0) {
-      await notifyDueTasks(user.phone_number, user.name, dueTasks);
-    }
-  }
-  res.send('Due task notifications sent.');
-});
-
-app.get('/test/notify-overdue-tasks', async (req, res) => {
-  const users = await User.find();
-  for (const user of users) {
-    const overdueTasks = await Task.find({
-      assignedTo: user._id,
-      deadline: { $lt: new Date() },
-      status: { $ne: 'Completed' },
-    });
-
-    if (overdueTasks.length > 0) {
-      await notifyOverdueTasks(user.phone_number, user.name, overdueTasks);
-    }
-  }
-  res.send('Overdue task notifications sent.');
-});
-
-// Log Request Headers for Debugging
-app.use((req, res, next) => {
-  console.log('Request Headers:', req.headers);
-  next();
-});
+// Log Request Headers for Debugging (Optional)
+// app.use((req, res, next) => {
+//   console.log('Request Headers:', req.headers);
+//   next();
+// });
 
 // Routes
 app.use('/auth', require('./routes/authRoutes'));
@@ -121,21 +86,24 @@ app.use('/tasks', taskRoutes);
 app.use('/task-categories', taskCategoryRoutes);
 app.use('/dashboard', require('./routes/dashboardRoutes'));
 
-// Schedule daily task reminders at 8 AM
+// Schedule daily task reminders at 8 AM (Server Time)
 cron.schedule('0 8 * * *', async () => {
   console.log('Running daily task due notification job');
   try {
     const users = await User.find();
     for (const user of users) {
       const today = new Date();
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
       const dueTasks = await Task.find({
         assignedTo: user._id,
-        deadline: { $lte: new Date(today.setHours(23, 59, 59, 999)), $gte: new Date(today.setHours(0, 0, 0, 0)) },
+        deadline: { $gte: startOfDay, $lte: endOfDay },
         status: { $ne: 'Completed' },
       });
 
       if (Array.isArray(dueTasks) && dueTasks.length > 0) {
-        await notifyDueTasks(user.phone_number, dueTasks);
+        await notifyDueTasks(user.phone_number, user.name, dueTasks);
       }
     }
   } catch (error) {
@@ -143,20 +111,21 @@ cron.schedule('0 8 * * *', async () => {
   }
 });
 
-// Schedule overdue task notifications at 8 PM
+// Schedule overdue task notifications at 8 PM (Server Time)
 cron.schedule('0 20 * * *', async () => {
   console.log('Running daily overdue task notification job');
   try {
     const users = await User.find();
     for (const user of users) {
+      const today = new Date();
       const overdueTasks = await Task.find({
         assignedTo: user._id,
-        deadline: { $lt: new Date() },
+        deadline: { $lt: today },
         status: { $ne: 'Completed' },
       });
 
       if (Array.isArray(overdueTasks) && overdueTasks.length > 0) {
-        await notifyOverdueTasks(user.phone_number, overdueTasks);
+        await notifyOverdueTasks(user.phone_number, user.name, overdueTasks);
       }
     }
   } catch (error) {
@@ -181,4 +150,3 @@ http.createServer((req, res) => {
 }).listen(HTTP_PORT, () => {
   console.log(`HTTP Server running on port ${HTTP_PORT} and redirecting to HTTPS`);
 });
-
