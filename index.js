@@ -1,3 +1,4 @@
+
 // backend/index.js
 
 const http = require('http');
@@ -118,6 +119,7 @@ app.use('/users', userRoutes);
 app.use('/api', equitySplitRoutes);
 app.use('/tasks', taskRoutes);
 app.use('/task-categories', taskCategoryRoutes);
+app.use('/dashboard', require('./routes/dashboardRoutes'));
 
 // Schedule daily task reminders at 8 AM
 cron.schedule('0 8 * * *', async () => {
@@ -179,3 +181,4 @@ http.createServer((req, res) => {
 }).listen(HTTP_PORT, () => {
   console.log(`HTTP Server running on port ${HTTP_PORT} and redirecting to HTTPS`);
 });
+
