@@ -69,12 +69,6 @@ connectDB();
 // Basic Route
 app.get('/', (req, res) => res.send('API is running...'));
 
-// Log Request Headers for Debugging (Optional)
-// app.use((req, res, next) => {
-//   console.log('Request Headers:', req.headers);
-//   next();
-// });
-
 // Routes
 app.use('/auth', require('./routes/authRoutes'));
 app.use('/expenses', require('./routes/expenseRoutes'));
@@ -86,9 +80,9 @@ app.use('/tasks', taskRoutes);
 app.use('/task-categories', taskCategoryRoutes);
 app.use('/dashboard', require('./routes/dashboardRoutes'));
 
-// Schedule daily task reminders at 8 AM (Server Time)
-cron.schedule('0 8 * * *', async () => {
-  console.log('Running daily task due notification job');
+// Schedule daily task reminders at 9 AM IST (3:30 AM UTC)
+cron.schedule('30 3 * * *', async () => {
+  console.log('Running daily task due notification job at 9 AM IST');
   try {
     const users = await User.find();
     for (const user of users) {
@@ -111,9 +105,9 @@ cron.schedule('0 8 * * *', async () => {
   }
 });
 
-// Schedule overdue task notifications at 8 PM (Server Time)
-cron.schedule('0 20 * * *', async () => {
-  console.log('Running daily overdue task notification job');
+// Schedule overdue task notifications at 8 PM IST (14:30 UTC)
+cron.schedule('30 14 * * *', async () => {
+  console.log('Running daily overdue task notification job at 8 PM IST');
   try {
     const users = await User.find();
     for (const user of users) {
