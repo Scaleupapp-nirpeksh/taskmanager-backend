@@ -80,8 +80,8 @@ app.use('/tasks', taskRoutes);
 app.use('/task-categories', taskCategoryRoutes);
 app.use('/dashboard', require('./routes/dashboardRoutes'));
 
-// Schedule daily task reminders at 9 AM IST (3:30 AM UTC)
-cron.schedule('30 3 * * *', async () => {
+// Schedule daily task reminders at 9 AM IST
+cron.schedule('0 9 * * *', async () => {
   console.log('Running daily task due notification job at 9 AM IST');
   try {
     const users = await User.find();
@@ -103,11 +103,14 @@ cron.schedule('30 3 * * *', async () => {
   } catch (error) {
     console.error('Error sending daily due notifications:', error);
   }
+}, {
+  scheduled: true,
+  timezone: "Asia/Kolkata"
 });
 
-// Schedule overdue task notifications at 8 PM IST (14:30 UTC)
-cron.schedule('30 14 * * *', async () => {
-  console.log('Running daily overdue task notification job at 8 PM IST');
+// **Updated** Schedule overdue task notifications at 9:30 AM IST
+cron.schedule('07 9 * * *', async () => {
+  console.log('Running daily overdue task notification job at 9:30 AM IST');
   try {
     const users = await User.find();
     for (const user of users) {
@@ -125,6 +128,9 @@ cron.schedule('30 14 * * *', async () => {
   } catch (error) {
     console.error('Error sending daily overdue notifications:', error);
   }
+}, {
+  scheduled: true,
+  timezone: "Asia/Kolkata"
 });
 
 // Start HTTPS server
