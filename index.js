@@ -110,7 +110,7 @@ cron.schedule('0 9 * * *', async () => {
 });
 
 // **Updated** Schedule overdue task notifications at 9:30 AM IST
-cron.schedule('35 10 * * *', async () => {
+cron.schedule('30 10 * * *', async () => {
   console.log('Running daily overdue task notification job at 9:30 AM IST');
   try {
     const users = await User.find();
