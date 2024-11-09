@@ -7,7 +7,6 @@ const client = twilio(
   process.env.TWILIO_AUTH_TOKEN
 );
 
-// Function to send WhatsApp Template Message
 const sendWhatsAppTemplateMessage = async (to, contentSid, templateData) => {
   if (!to) {
     console.error('No phone number provided for WhatsApp template message.');
@@ -16,15 +15,19 @@ const sendWhatsAppTemplateMessage = async (to, contentSid, templateData) => {
   console.log(`Attempting to send WhatsApp template message to ${to} using contentSid ${contentSid}`);
 
   try {
+    const contentVariables = JSON.stringify({
+      '1': templateData[0],
+      '2': templateData[1],
+      '3': templateData[2],
+    });
+
+    console.log('Content Variables:', contentVariables);
+
     const response = await client.messages.create({
       from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
       to: `whatsapp:${to}`,
       contentSid: contentSid,
-      contentVariables: JSON.stringify({
-        '{{1}}': templateData[0],
-        '{{2}}': templateData[1],
-        '{{3}}': templateData[2],
-      }),
+      contentVariables: contentVariables,
     });
     console.log(`Template message sent to ${to}`, response);
   } catch (error) {
@@ -33,19 +36,15 @@ const sendWhatsAppTemplateMessage = async (to, contentSid, templateData) => {
   }
 };
 
+
 const notifyDueTasks = async (phoneNumber, userName, dueTasks) => {
   if (!phoneNumber) {
-    console.error(
-      'Phone number is undefined for due tasks notification.'
-    );
+    console.error('Phone number is undefined for due tasks notification.');
     return;
   }
 
   if (!Array.isArray(dueTasks)) {
-    console.error(
-      'Expected an array for dueTasks, but received:',
-      dueTasks
-    );
+    console.error('Expected an array for dueTasks, but received:', dueTasks);
     return;
   }
 
@@ -55,17 +54,19 @@ const notifyDueTasks = async (phoneNumber, userName, dueTasks) => {
         (task, index) =>
           `${index + 1}. *${task.title}*\n   - Description: ${
             task.description
-          }\n   - Deadline: ${new Date(
-            task.deadline
-          ).toLocaleDateString()}`
+          }\n   - Deadline: ${new Date(task.deadline).toLocaleDateString()}`
       )
       .join('\n\n');
 
+    console.log('Generated Task List:', taskList);
+
     const templateData = [
-      userName, // Use the actual user's name
-      taskList,
-      'https://www.nirpekshnandan.com',
+      userName,     // For {{1}}
+      taskList,     // For {{2}}
+      'https://www.nirpekshnandan.com', // For {{3}}
     ];
+
+    console.log('Template Data:', templateData);
 
     await sendWhatsAppTemplateMessage(
       phoneNumber,
@@ -74,12 +75,10 @@ const notifyDueTasks = async (phoneNumber, userName, dueTasks) => {
     );
     console.log(`Due tasks notification sent to ${phoneNumber}`);
   } catch (error) {
-    console.error(
-      `Error sending due task notification to ${phoneNumber}:`,
-      error
-    );
+    console.error(`Error sending due task notification to ${phoneNumber}:`, error);
   }
 };
+
 
 const notifyOverdueTasks = async (phoneNumber, userName, overdueTasks) => {
   if (!phoneNumber) {
@@ -109,11 +108,15 @@ const notifyOverdueTasks = async (phoneNumber, userName, overdueTasks) => {
       )
       .join('\n\n');
 
+    console.log('Generated Task Messages:', taskMessages);
+
     const templateData = [
-      userName, // Use the actual user's name
-      taskMessages,
-      'https://www.nirpekshnandan.com',
+      userName, // For {{1}}
+      taskMessages, // For {{2}}
+      'https://www.nirpekshnandan.com', // For {{3}}
     ];
+
+    console.log('Template Data:', templateData);
 
     await sendWhatsAppTemplateMessage(
       phoneNumber,

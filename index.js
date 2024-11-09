@@ -1,3 +1,4 @@
+//Prod Code
 // backend/index.js
 
 const http = require('http');
@@ -109,7 +110,7 @@ cron.schedule('0 9 * * *', async () => {
 });
 
 // **Updated** Schedule overdue task notifications at 9:30 AM IST
-cron.schedule('07 9 * * *', async () => {
+cron.schedule('35 10 * * *', async () => {
   console.log('Running daily overdue task notification job at 9:30 AM IST');
   try {
     const users = await User.find();
@@ -150,3 +151,4 @@ http.createServer((req, res) => {
 }).listen(HTTP_PORT, () => {
   console.log(`HTTP Server running on port ${HTTP_PORT} and redirecting to HTTPS`);
 });
+
