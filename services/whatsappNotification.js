@@ -1,135 +1,68 @@
-// services/whatsappNotification.js
+// backend/services/whatsappNotification.js
+
 const twilio = require('twilio');
-require('dotenv').config();
+const User = require('../models/User');
+const Task = require('../models/Task');
 
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+const FROM_WHATSAPP = `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`;
 
-const sendWhatsAppTemplateMessage = async (to, contentSid, templateData) => {
-  if (!to) {
-    console.error('No phone number provided for WhatsApp template message.');
-    return;
-  }
-  console.log(`Attempting to send WhatsApp template message to ${to} using contentSid ${contentSid}`);
-
+const sendWhatsAppTemplateMessage = async (to, contentSid) => {
   try {
-    const contentVariables = JSON.stringify({
-      '1': templateData[0],
-      '2': templateData[1],
-      '3': templateData[2],
-    });
-
-    console.log('Content Variables:', contentVariables);
-
-    const response = await client.messages.create({
-      from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+    await client.messages.create({
       to: `whatsapp:${to}`,
-      contentSid: contentSid,
-      contentVariables: contentVariables,
+      from: FROM_WHATSAPP,
+      contentSid,  // Use contentSid here instead of messagingServiceSid
     });
-    console.log(`Template message sent to ${to}`, response);
   } catch (error) {
-    console.error(`Failed to send WhatsApp template message to ${to}:`, error.message);
-    console.error('Full error details:', error);
+    console.error(`Failed to send WhatsApp message to ${to}: ${error.message}`);
   }
 };
 
 
-const notifyDueTasks = async (phoneNumber, userName, dueTasks) => {
-  if (!phoneNumber) {
-    console.error('Phone number is undefined for due tasks notification.');
-    return;
-  }
+// Notify users with tasks due today
+const notifyDueTasks = async () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-  if (!Array.isArray(dueTasks)) {
-    console.error('Expected an array for dueTasks, but received:', dueTasks);
-    return;
-  }
+  // Find tasks due today and group by user
+  const tasksDueToday = await Task.find({
+    deadline: today,
+    status: { $ne: 'Completed' }
+  }).populate('assignedTo', 'name phone_number');
 
-  try {
-    const taskList = dueTasks
-      .map(
-        (task, index) =>
-          `${index + 1}. *${task.title}*\n   - Description: ${
-            task.description
-          }\n   - Deadline: ${new Date(task.deadline).toLocaleDateString()}`
-      )
-      .join('\n\n');
+  const usersNotified = new Set();
 
-    console.log('Generated Task List:', taskList);
-
-    const templateData = [
-      userName,     // For {{1}}
-      taskList,     // For {{2}}
-      'https://www.nirpekshnandan.com', // For {{3}}
-    ];
-
-    console.log('Template Data:', templateData);
-
-    await sendWhatsAppTemplateMessage(
-      phoneNumber,
-      process.env.TWILIO_TEMPLATE_SID_NOTIFICATION,
-      templateData
-    );
-    console.log(`Due tasks notification sent to ${phoneNumber}`);
-  } catch (error) {
-    console.error(`Error sending due task notification to ${phoneNumber}:`, error);
+  for (const task of tasksDueToday) {
+    const user = task.assignedTo;
+    if (user && !usersNotified.has(user._id)) {
+      usersNotified.add(user._id);
+      await sendWhatsAppTemplateMessage(user.phone_number, process.env.TWILIO_TEMPLATE_CONTENT_SID_NEW_DUE_TASKS);
+    }
   }
 };
 
+// Notify users with overdue tasks
+const notifyOverdueTasks = async () => {
+  const today = new Date();
 
-const notifyOverdueTasks = async (phoneNumber, userName, overdueTasks) => {
-  if (!phoneNumber) {
-    console.error(
-      'Phone number is undefined for overdue tasks notification.'
-    );
-    return;
-  }
+  const overdueTasks = await Task.find({
+    deadline: { $lt: today },
+    status: { $ne: 'Completed' }
+  }).populate('assignedTo', 'name phone_number');
 
-  if (!Array.isArray(overdueTasks)) {
-    console.error(
-      'Expected an array for overdueTasks, but received:',
-      overdueTasks
-    );
-    return;
-  }
+  const usersNotified = new Set();
 
-  try {
-    const taskMessages = overdueTasks
-      .map(
-        (task, index) =>
-          `${index + 1}. *${task.title}*\n   - Description: ${
-            task.description
-          }\n   - Was due on: ${new Date(
-            task.deadline
-          ).toLocaleDateString()}`
-      )
-      .join('\n\n');
-
-    console.log('Generated Task Messages:', taskMessages);
-
-    const templateData = [
-      userName, // For {{1}}
-      taskMessages, // For {{2}}
-      'https://www.nirpekshnandan.com', // For {{3}}
-    ];
-
-    console.log('Template Data:', templateData);
-
-    await sendWhatsAppTemplateMessage(
-      phoneNumber,
-      process.env.TWILIO_TEMPLATE_SID_NOTIFICATION2,
-      templateData
-    );
-    console.log(`Overdue tasks notification sent to ${phoneNumber}`);
-  } catch (error) {
-    console.error(
-      `Error sending overdue task notification to ${phoneNumber}:`,
-      error
-    );
+  for (const task of overdueTasks) {
+    const user = task.assignedTo;
+    if (user && !usersNotified.has(user._id)) {
+      usersNotified.add(user._id);
+      await sendWhatsAppTemplateMessage(user.phone_number, process.env.TWILIO_TEMPLATE_CONTENT_SID_NEW_OVERDUE_TASKS);
+    }
   }
 };
+
+module.exports = { notifyDueTasks, notifyOverdueTasks };
+
 
 module.exports = { notifyDueTasks, notifyOverdueTasks };

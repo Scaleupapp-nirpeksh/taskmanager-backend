@@ -81,58 +81,44 @@ app.use('/tasks', taskRoutes);
 app.use('/task-categories', taskCategoryRoutes);
 app.use('/dashboard', require('./routes/dashboardRoutes'));
 
-// Schedule daily task reminders at 9 AM IST
+// Schedule daily due task notifications at 9:00 AM IST
 cron.schedule('0 9 * * *', async () => {
-  console.log('Running daily task due notification job at 9 AM IST');
+  console.log('Running daily due task notification job at 9:00 AM IST');
   try {
-    const users = await User.find();
-    for (const user of users) {
-      const today = new Date();
-      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-      const endOfDay = new Date(today.setHours(23, 59, 59, 999));
-
-      const dueTasks = await Task.find({
-        assignedTo: user._id,
-        deadline: { $gte: startOfDay, $lte: endOfDay },
-        status: { $ne: 'Completed' },
-      });
-
-      if (Array.isArray(dueTasks) && dueTasks.length > 0) {
-        await notifyDueTasks(user.phone_number, user.name, dueTasks);
-      }
-    }
+    await notifyDueTasks();
   } catch (error) {
-    console.error('Error sending daily due notifications:', error);
+    console.error('Error sending due task notifications:', error);
   }
 }, {
   scheduled: true,
   timezone: "Asia/Kolkata"
 });
 
-// **Updated** Schedule overdue task notifications at 9:30 AM IST
-cron.schedule('30 10 * * *', async () => {
+// Schedule overdue task notifications at 9:30 AM IST and 7:30 PM IST
+cron.schedule('30 9 * * *', async () => {
   console.log('Running daily overdue task notification job at 9:30 AM IST');
   try {
-    const users = await User.find();
-    for (const user of users) {
-      const today = new Date();
-      const overdueTasks = await Task.find({
-        assignedTo: user._id,
-        deadline: { $lt: today },
-        status: { $ne: 'Completed' },
-      });
-
-      if (Array.isArray(overdueTasks) && overdueTasks.length > 0) {
-        await notifyOverdueTasks(user.phone_number, user.name, overdueTasks);
-      }
-    }
+    await notifyOverdueTasks();
   } catch (error) {
-    console.error('Error sending daily overdue notifications:', error);
+    console.error('Error sending overdue task notifications (morning):', error);
   }
 }, {
   scheduled: true,
   timezone: "Asia/Kolkata"
 });
+
+cron.schedule('30 19 * * *', async () => {
+  console.log('Running daily overdue task notification job at 7:30 PM IST');
+  try {
+    await notifyOverdueTasks();
+  } catch (error) {
+    console.error('Error sending overdue task notifications (evening):', error);
+  }
+}, {
+  scheduled: true,
+  timezone: "Asia/Kolkata"
+});
+
 
 // Start HTTPS server
 https.createServer(httpsOptions, app).listen(HTTPS_PORT, () => {
@@ -151,4 +137,5 @@ http.createServer((req, res) => {
 }).listen(HTTP_PORT, () => {
   console.log(`HTTP Server running on port ${HTTP_PORT} and redirecting to HTTPS`);
 });
+
 
