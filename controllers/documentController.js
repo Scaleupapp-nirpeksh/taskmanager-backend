@@ -193,27 +193,3 @@ exports.deleteDocument = async (req, res) => {
     }
   };
 
-
-  // Generate pre-signed URLs for attachments
-const attachmentsWithSignedUrls = await Promise.all(
-    document.attachments.map(async (attachment) => {
-      const command = new GetObjectCommand({
-        Bucket: process.env.S3_BUCKET_NAME,
-        Key: attachment.key,
-      });
-  
-      const signedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 }); // 1 hour
-  
-      return {
-        ...attachment.toObject(),
-        url: signedUrl,
-      };
-    })
-  );
-  
-  const documentData = document.toObject();
-  documentData.attachments = attachmentsWithSignedUrls;
-  
-  res.json(documentData);
-  
-
