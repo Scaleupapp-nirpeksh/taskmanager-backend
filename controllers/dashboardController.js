@@ -1,16 +1,17 @@
 // backend/controllers/dashboardController.js
+
 const EquitySplit = require('../models/EquitySplit');
 const Task = require('../models/Task');
 const Expense = require('../models/Expense');
 const MonthlyParity = require('../models/MonthlyParity');
+const Document = require('../models/Document'); // Added
 const mongoose = require('mongoose');
-
 
 exports.getUserDashboard = async (req, res) => {
   try {
     const userId = req.user._id;
-    const userEmail = req.user.email; // Assuming you have the user's email in req.user
-    const userName = req.user.name;   // Assuming you have the user's name in req.user
+    const userEmail = req.user.email;
+    const userName = req.user.name;
 
     // Fetch user's equity split
     const equitySplit = await EquitySplit.findOne({
@@ -26,7 +27,12 @@ exports.getUserDashboard = async (req, res) => {
 
     // Fetch tasks assigned to the user
     const tasks = await Task.find({ assignedTo: userId }).populate('category', 'categoryName');
-    const overdueTasks = tasks.filter(task => new Date(task.deadline) < new Date() && task.status !== 'Completed');
+    const now = new Date();
+const overdueTasks = tasks.filter(
+  (task) => task.deadline && new Date(task.deadline) < now && task.status !== 'Completed'
+);
+
+
     const taskStats = {
       totalTasks: tasks.length,
       totalOverdue: overdueTasks.length,
@@ -35,7 +41,6 @@ exports.getUserDashboard = async (req, res) => {
     };
 
     // Fetch user's expenses
-    // Adjust the query to match the type of data stored in assigned_to
     const userExpenses = await Expense.find({ assigned_to: userName }); // Use the correct field here
 
     const monthlyExpenses = await MonthlyParity.find({ 'parityData.founderId': userId }).sort({ year: 1, month: 1 });
@@ -55,7 +60,7 @@ exports.getUserDashboard = async (req, res) => {
           ? userParityData.disparity === 0
             ? 'Even'
             : userParityData.disparity > 0
-            ? 'Needs Collection' // Corrected here
+            ? 'Needs Collection'
             : 'Owes Money'
           : 'No Data',
         detailedExpenses: userExpenses.filter(expense => {
@@ -74,12 +79,18 @@ exports.getUserDashboard = async (req, res) => {
       };
     });
 
+    // Fetch documents created by the user
+    const userDocuments = await Document.find({ owner: userId })
+      .select('title updatedAt')
+      .sort({ updatedAt: -1 });
+
     res.status(200).json({
       equitySplit: userEquity || 'Not part of any equity split',
       taskStats,
       tasks,
       investmentDetails,
-      totalInvestment: investmentDetails.reduce((sum, detail) => sum + detail.actualContribution, 0)
+      totalInvestment: investmentDetails.reduce((sum, detail) => sum + detail.actualContribution, 0),
+      documents: userDocuments, // Added this line
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
