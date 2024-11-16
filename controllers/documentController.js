@@ -162,34 +162,35 @@ exports.getDocumentById = async (req, res) => {
   
 // Delete a document
 exports.deleteDocument = async (req, res) => {
-    try {
-      const document = await Document.findById(req.params.id);
-  
-      if (!document) {
-        return res.status(404).json({ message: 'Document not found' });
-      }
-  
-      // Only the owner can delete the document
-      if (!document.owner.equals(req.user._id)) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-  
-      // Delete attachments from S3
-      if (document.attachments.length > 0) {
-        const deleteParams = {
-          Bucket: process.env.S3_BUCKET_NAME,
-          Delete: {
-            Objects: document.attachments.map((attachment) => ({ Key: attachment.key })),
-          },
-        };
-  
-        await s3.send(new DeleteObjectsCommand(deleteParams));
-      }
-  
-      await document.remove();
-      res.json({ message: 'Document and attachments deleted' });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+  try {
+    const document = await Document.findById(req.params.id);
+
+    if (!document) {
+      return res.status(404).json({ message: 'Document not found' });
     }
-  };
+
+    // Only the owner can delete the document
+    if (!document.owner.equals(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Delete attachments from S3
+    if (document.attachments.length > 0) {
+      const deleteParams = {
+        Bucket: process.env.S3_BUCKET_NAME,
+        Delete: {
+          Objects: document.attachments.map((attachment) => ({ Key: attachment.key })),
+        },
+      };
+
+      await s3.send(new DeleteObjectsCommand(deleteParams));
+    }
+
+    await document.deleteOne();
+    res.json({ message: 'Document and attachments deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 
