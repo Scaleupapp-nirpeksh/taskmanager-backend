@@ -10,6 +10,9 @@ const {
   getDocumentById,
   updateDocument,
   deleteDocument,
+  addComment,      // Import addComment
+  likeDocument,    // Import likeDocument
+  unlikeDocument,  // Import unlikeDocument
 } = require('../controllers/documentController');
 
 // Route to create a new document with file uploads
@@ -24,5 +27,15 @@ router
   .get(protect, getDocumentById)
   .put(protect, upload.array('attachments'), updateDocument)
   .delete(protect, deleteDocument);
+
+
+// Route to add a comment to a document
+router.post('/:id/comments', protect, addComment);
+
+// Route to like a document
+router.post('/:id/like', protect, likeDocument);
+
+// Route to unlike a document
+router.post('/:id/unlike', protect, unlikeDocument);
 
 module.exports = router;

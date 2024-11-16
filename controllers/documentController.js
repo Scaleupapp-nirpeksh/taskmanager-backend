@@ -99,7 +99,7 @@ const skip = (page - 1) * limit;
         { 'collaborators.user': req.user._id },
       ],
     })
-    .select('title owner collaborators createdAt updatedAt')
+    .select('title owner collaborators createdAt updatedAt likes')
     .skip(skip)
     .limit(limit)
     .populate('owner', 'name email')
@@ -114,51 +114,52 @@ const skip = (page - 1) * limit;
 
 // Get a document by ID
 exports.getDocumentById = async (req, res) => {
-    try {
-      const document = await Document.findById(req.params.id)
-        .populate('owner', 'name email')
-        .populate('collaborators.user', 'name email');
-  
-      if (!document) {
-        return res.status(404).json({ message: 'Document not found' });
-      }
-  
-      // Check if the user has access
-      const isOwner = document.owner.equals(req.user._id);
-      const collaborator = document.collaborators.find((collab) =>
-        collab.user.equals(req.user._id)
-      );
-      const hasAccess = isOwner || collaborator;
-  
-      if (!hasAccess) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-  
-      // Generate pre-signed URLs for attachments
-      const attachmentsWithSignedUrls = await Promise.all(
-        document.attachments.map(async (attachment) => {
-          const command = new GetObjectCommand({
-            Bucket: process.env.S3_BUCKET_NAME,
-            Key: attachment.key,
-          });
-  
-          const signedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 }); // 1 hour
-  
-          return {
-            ...attachment.toObject(),
-            url: signedUrl,
-          };
-        })
-      );
-  
-      const documentData = document.toObject();
-      documentData.attachments = attachmentsWithSignedUrls;
-  
-      res.json(documentData);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+  try {
+    const document = await Document.findById(req.params.id)
+      .populate('owner', 'name email')
+      .populate('collaborators.user', 'name email')
+      .populate('comments.user', 'name email'); // Populate comment users
+
+    if (!document) {
+      return res.status(404).json({ message: 'Document not found' });
     }
-  };
+
+    // Check if the user has access
+    const isOwner = document.owner.equals(req.user._id);
+    const collaborator = document.collaborators.find((collab) =>
+      collab.user.equals(req.user._id)
+    );
+    const hasAccess = isOwner || collaborator;
+
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Generate pre-signed URLs for attachments
+    const attachmentsWithSignedUrls = await Promise.all(
+      document.attachments.map(async (attachment) => {
+        const command = new GetObjectCommand({
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: attachment.key,
+        });
+
+        const signedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 }); // 1 hour
+
+        return {
+          ...attachment.toObject(),
+          url: signedUrl,
+        };
+      })
+    );
+
+    const documentData = document.toObject();
+    documentData.attachments = attachmentsWithSignedUrls;
+
+    res.json(documentData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
   
 // Delete a document
 exports.deleteDocument = async (req, res) => {
@@ -193,4 +194,90 @@ exports.deleteDocument = async (req, res) => {
   }
 };
 
+// Add a comment to a document
+exports.addComment = async (req, res) => {
+  const { content } = req.body;
+
+  try {
+    const document = await Document.findById(req.params.id);
+
+    if (!document) {
+      return res.status(404).json({ message: 'Document not found' });
+    }
+
+    // Check if the user has access to the document
+    const isOwner = document.owner.equals(req.user._id);
+    const collaborator = document.collaborators.find((collab) =>
+      collab.user.equals(req.user._id)
+    );
+    const hasAccess = isOwner || collaborator;
+
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Add the comment
+    const comment = {
+      user: req.user._id,
+      content,
+    };
+    document.comments.push(comment);
+    await document.save();
+
+    // Optionally populate the user field
+    await document.populate('comments.user', 'name email');
+
+    res.status(201).json({ message: 'Comment added', comment });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Like a document
+exports.likeDocument = async (req, res) => {
+  try {
+    const document = await Document.findById(req.params.id);
+
+    if (!document) {
+      return res.status(404).json({ message: 'Document not found' });
+    }
+
+    // Check if the user has already liked the document
+    if (document.likes.includes(req.user._id)) {
+      return res.status(400).json({ message: 'You have already liked this document' });
+    }
+
+    document.likes.push(req.user._id);
+    await document.save();
+
+    res.json({ message: 'Document liked' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Unlike a document
+exports.unlikeDocument = async (req, res) => {
+  try {
+    const document = await Document.findById(req.params.id);
+
+    if (!document) {
+      return res.status(404).json({ message: 'Document not found' });
+    }
+
+    // Check if the user has liked the document
+    if (!document.likes.includes(req.user._id)) {
+      return res.status(400).json({ message: 'You have not liked this document' });
+    }
+
+    document.likes = document.likes.filter(
+      (userId) => !userId.equals(req.user._id)
+    );
+    await document.save();
+
+    res.json({ message: 'Document unliked' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
