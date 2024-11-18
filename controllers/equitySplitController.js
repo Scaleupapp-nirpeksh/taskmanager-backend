@@ -4,19 +4,28 @@ const User = require('../models/User'); // Assuming User model is in models fold
 
 
 exports.getEquitySplit = async (req, res) => {
-    try {
-      // Fetch the first available equity split, assuming only one record is needed for all users
-      const equitySplit = await EquitySplit.findOne().populate('founders.userId', 'name');
-      
-      if (!equitySplit) {
-        return res.status(404).json({ message: 'Equity split not found' });
-      }
-  
-      res.status(200).json(equitySplit);
-    } catch (error) {
-      res.status(500).json({ message: 'Failed to retrieve equity split', error: error.message });
+  try {
+    // Fetch the existing equity split, if available
+    const equitySplit = await EquitySplit.findOne().populate('founders.userId', 'name');
+
+    // Fetch all users if no equity split is found
+    if (!equitySplit) {
+      const users = await User.find({}, 'name'); // Fetch all users with just their names
+      return res.status(200).json({
+        message: 'No equity split found. Listing all users for setup.',
+        equitySplit: null,
+        users: users.map(user => ({ id: user._id, name: user.name })),
+      });
     }
-  };
+
+    res.status(200).json({
+      message: 'Equity split found.',
+      equitySplit: equitySplit.founders,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to retrieve equity split', error: error.message });
+  }
+};
   
   
 
