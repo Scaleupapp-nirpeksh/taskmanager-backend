@@ -1,6 +1,7 @@
 // backend/controllers/taskController.js
 const Task = require('../models/Task');
 const TaskCategory = require('../models/TaskCategory');
+const { createNotification } = require('./notificationController');
 
 exports.createTask = async (req, res) => {
   console.log("Received create task request:", req.body);
@@ -20,6 +21,16 @@ exports.createTask = async (req, res) => {
       assignedTo,
       createdBy: req.user._id,
     });
+
+
+        // Notify the assigned user
+        createNotification(
+          assignedTo,
+          'task_assigned',
+          `A new task "${title}" has been assigned to you.`
+        );
+
+
     res.status(201).json(task);
   } catch (error) {
     console.error("Error in createTask:", error);
@@ -73,6 +84,16 @@ exports.getOverdueTasks = async (req, res) => {
 exports.updateTask = async (req, res) => {
   try {
     const updatedTask = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    
+    if (req.body.status) {
+      // Notify the assigned user about the status change
+      createNotification(
+        updatedTask.assignedTo,
+        'task_status_updated',
+        `The status of task "${updatedTask.title}" has been updated to "${req.body.status}".`
+      );
+    }
+    
     res.status(200).json(updatedTask);
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -21,6 +21,7 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const authRoutes = require('./routes/authRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 // Import Services
 const { notifyDueTasks, notifyOverdueTasks } = require('./services/whatsappNotification');
@@ -112,6 +113,7 @@ app.use('/task-categories', taskCategoryRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/documents', documentRoutes);
 app.use('/upload', uploadRoutes);
+app.use('/notifications', notificationRoutes);
 
 // Schedule cron jobs
 cron.schedule('0 9 * * *', async () => {
@@ -167,3 +169,4 @@ http.createServer((req, res) => {
 }).listen(HTTP_PORT, () => {
   console.log(`HTTP Server running on port ${HTTP_PORT} and redirecting to HTTPS`);
 });
+
