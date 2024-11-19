@@ -5,28 +5,43 @@ const User = require('../models/User'); // Assuming User model is in models fold
 
 exports.getEquitySplit = async (req, res) => {
   try {
-    // Fetch the existing equity split, if available
+    // Fetch the existing equity split
     const equitySplit = await EquitySplit.findOne().populate('founders.userId', 'name');
 
-    // Fetch all users if no equity split is found
-    if (!equitySplit) {
-      const users = await User.find({}, 'name'); // Fetch all users with just their names
-      return res.status(200).json({
-        message: 'No equity split found. Listing all users for setup.',
-        equitySplit: null,
-        users: users.map(user => ({ id: user._id, name: user.name })),
-      });
-    }
+    // Fetch all users
+    const allUsers = await User.find({}, 'name'); // Fetch all users with just their names
 
-    res.status(200).json({
-      message: 'Equity split found.',
-      equitySplit: equitySplit.founders,
-    });
+    // Include users not in the equity split
+    const usersNotInSplit = allUsers.filter(user =>
+      !equitySplit?.founders.some(founder => founder.userId._id.equals(user._id))
+    );
+
+    // Merge users from equitySplit and new users
+    const responseUsers = equitySplit
+      ? [
+          ...equitySplit.founders.map(founder => ({
+            id: founder.userId._id,
+            name: founder.userId.name,
+            equity: founder.equity,
+          })),
+          ...usersNotInSplit.map(user => ({
+            id: user._id,
+            name: user.name,
+            equity: 0, // Default equity for new users
+          })),
+        ]
+      : allUsers.map(user => ({
+          id: user._id,
+          name: user.name,
+          equity: 0,
+        }));
+
+    res.status(200).json({ founders: responseUsers });
   } catch (error) {
     res.status(500).json({ message: 'Failed to retrieve equity split', error: error.message });
   }
 };
-  
+
   
 
   exports.saveEquitySplit = async (req, res) => {
