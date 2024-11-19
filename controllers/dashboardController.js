@@ -33,7 +33,7 @@ const overdueTasks = tasks.filter(
 );
 
 
-    const taskStats = {
+    const taskStats = { 
       totalTasks: tasks.length,
       totalOverdue: overdueTasks.length,
       totalInProgress: tasks.filter(task => task.status === 'In Progress').length,

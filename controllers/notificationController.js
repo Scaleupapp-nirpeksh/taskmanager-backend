@@ -1,14 +1,15 @@
 const Notification = require('../models/Notification');
 
-// Create a notification
 exports.createNotification = async (userId, type, message) => {
-  try {
-    const notification = new Notification({ user: userId, type, message });
-    await notification.save();
-  } catch (error) {
-    console.error('Error creating notification:', error.message);
-  }
-};
+    try {
+      const notification = new Notification({ user: userId, type, message });
+      const savedNotification = await notification.save();
+      console.log('Notification saved:', savedNotification); // Debugging log
+      return savedNotification;
+    } catch (error) {
+      console.error('Error creating notification:', error.message);
+    }
+  };
 
 // Get notifications for a user
 exports.getNotifications = async (req, res) => {

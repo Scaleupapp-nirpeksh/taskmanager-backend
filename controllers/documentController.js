@@ -2,6 +2,7 @@
 const Document = require('../models/Document');
 const { s3, GetObjectCommand, DeleteObjectsCommand } = require('../utils/s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { createNotification } = require('./notificationController');
 
 // Create a new document
 exports.createDocument = async (req, res) => {
@@ -31,59 +32,82 @@ exports.createDocument = async (req, res) => {
 };
 
 exports.updateDocument = async (req, res) => {
-    const { title, content, collaborators } = req.body;
-    const files = req.files;
-  
-    try {
-      const document = await Document.findById(req.params.id);
-  
-      if (!document) {
-        return res.status(404).json({ message: 'Document not found' });
-      }
-  
-      // Determine permissions
-      const isOwner = document.owner.equals(req.user._id);
-      const collaborator = document.collaborators.find(collab => collab.user.equals(req.user._id));
-      const hasWriteAccess = isOwner || (collaborator && collaborator.permission === 'write');
-  
-      if (!hasWriteAccess) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-  
-      // Save current version
-      document.versions.push({
-        content: document.content,
-        attachments: document.attachments,
-        versionNumber: document.versions.length + 1,
-        createdAt: new Date(),
-      });
-  
-      // Update document fields
-      if (title) document.title = title;
-      if (content) document.content = content;
-  
-      // Handle new attachments
-      if (files && files.length > 0) {
-        const newAttachments = files.map(file => ({
-          filename: file.originalname,
-          url: file.location,
-          key: file.key,
-        }));
-        document.attachments = document.attachments.concat(newAttachments);
-      }
-  
-      // Only the owner can update collaborators
-      if (isOwner && collaborators) {
-        // Validate collaborators before updating
-        document.collaborators = collaborators;
-      }
-  
-      const updatedDocument = await document.save();
-      res.json(updatedDocument);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+  const { title, content, collaborators } = req.body;
+  const files = req.files;
+
+  try {
+    const document = await Document.findById(req.params.id)
+      .populate('owner', 'name email')
+      .populate('collaborators.user', 'name email');
+
+    if (!document) {
+      return res.status(404).json({ message: 'Document not found' });
     }
-  };
+
+    // Determine permissions
+    const isOwner = document.owner.equals(req.user._id);
+    const collaborator = document.collaborators.find(collab => collab.user.equals(req.user._id));
+    const hasWriteAccess = isOwner || (collaborator && collaborator.permission === 'write');
+
+    if (!hasWriteAccess) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Save current version
+    document.versions.push({
+      content: document.content,
+      attachments: document.attachments,
+      versionNumber: document.versions.length + 1,
+      createdAt: new Date(),
+    });
+
+    // Update document fields
+    if (title) document.title = title;
+    if (content) document.content = content;
+
+    // Handle new attachments
+    if (files && files.length > 0) {
+      const newAttachments = files.map(file => ({
+        filename: file.originalname,
+        url: file.location,
+        key: file.key,
+      }));
+      document.attachments = document.attachments.concat(newAttachments);
+    }
+
+    // Only the owner can update collaborators
+    if (isOwner && collaborators) {
+      // Validate collaborators before updating
+      document.collaborators = collaborators;
+    }
+
+    const updatedDocument = await document.save();
+
+    // Notify owner and collaborators
+    const notificationMessage = `${req.user.name} updated the document "${document.title}"`;
+
+    try {
+      // Notify the owner
+      
+        await createNotification(document.owner._id, 'document_updated', notificationMessage);
+      
+      // Notify collaborators
+      await Promise.all(
+        document.collaborators
+          .filter(collab => !collab.user.equals(req.user._id))
+          .map(collab =>
+            createNotification(collab.user._id, 'document_updated', notificationMessage)
+          )
+      );
+    } catch (notificationError) {
+      console.error('Error sending notifications:', notificationError.message);
+    }
+
+    res.json(updatedDocument);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
   
 // Get all documents accessible to the user
 exports.getDocuments = async (req, res) => {
@@ -194,12 +218,13 @@ exports.deleteDocument = async (req, res) => {
   }
 };
 
-// Add a comment to a document
 exports.addComment = async (req, res) => {
   const { content } = req.body;
 
   try {
-    const document = await Document.findById(req.params.id);
+    const document = await Document.findById(req.params.id)
+      .populate('owner', 'name email')
+      .populate('collaborators.user', 'name email');
 
     if (!document) {
       return res.status(404).json({ message: 'Document not found' });
@@ -224,19 +249,49 @@ exports.addComment = async (req, res) => {
     document.comments.push(comment);
     await document.save();
 
+    console.log('Comment added:', comment);
+
+       console.log('Sending notification to owner:', document.owner._id);
+
+      const ownerNotification =  createNotification(
+        document.owner._id,
+        'comment_added',
+        `${req.user.name} commented on your document: "${content}"`
+      );
+
+      console.log('Owner Notification Result:', ownerNotification);
+    
+
+    // Notify all collaborators except the commenter
+    const collaboratorNotifications = await Promise.all(
+      document.collaborators
+        .filter((collab) => !collab.user.equals(req.user._id))
+        .map(async (collab) => {
+          console.log('Sending notification to collaborator:', collab.user._id);
+
+          return createNotification(
+            collab.user._id,
+            'comment_added',
+            `${req.user.name} commented on a document you collaborate on: "${content}"`
+          );
+        })
+    );
+
+    console.log('Collaborator Notifications Results:', collaboratorNotifications);
+
     // Optionally populate the user field
     await document.populate('comments.user', 'name email');
 
     res.status(201).json({ message: 'Comment added', comment });
   } catch (error) {
+    console.error('Error in addComment:', error.message);
     res.status(500).json({ error: error.message });
   }
 };
 
-// Like a document
 exports.likeDocument = async (req, res) => {
   try {
-    const document = await Document.findById(req.params.id);
+    const document = await Document.findById(req.params.id).populate('owner', 'name email');
 
     if (!document) {
       return res.status(404).json({ message: 'Document not found' });
@@ -250,11 +305,22 @@ exports.likeDocument = async (req, res) => {
     document.likes.push(req.user._id);
     await document.save();
 
+    // Notify the owner
+    const notificationMessage = `${req.user.name} liked your document "${document.title}"`;
+
+    try {
+        await createNotification(document.owner._id, 'document_liked', notificationMessage);
+      
+    } catch (notificationError) {
+      console.error('Error sending like notification:', notificationError.message);
+    }
+
     res.json({ message: 'Document liked' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 // Unlike a document
 exports.unlikeDocument = async (req, res) => {

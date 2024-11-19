@@ -3,39 +3,38 @@ const Expense = require('../models/Expense');
 const EquitySplit = require('../models/EquitySplit');
 const mongoose = require('mongoose');
 const MonthlyParity = require('../models/MonthlyParity');
+const { createNotification } = require('./notificationController');
+const User = require('../models/User'); 
 
-// Create a new expense
-// Create a new expense and update MonthlyParity accordingly
 exports.createExpense = async (req, res) => {
   try {
-    // Step 1: Create the new expense
+    const assignedUser = await User.findOne({ name: req.body.assigned_to });
+    if (!assignedUser) {
+      return res.status(404).json({ message: `User ${req.body.assigned_to} not found` });
+    }
+
+    req.body.assigned_to = assignedUser._id;
     const expense = await Expense.create(req.body);
 
-    // Step 2: Identify month and year from the expense date
-    const expenseDate = new Date(expense.date);
-    const month = expenseDate.getMonth() + 1; // JavaScript months are 0-indexed
-    const year = expenseDate.getFullYear();
+    try {
+      const notificationMessage = `${req.user.name} added an expense of ₹${expense.amount} to your name.`;
+      await createNotification(expense.assigned_to, 'expense_added', notificationMessage);
+    } catch (notificationError) {
+      console.error('Error sending expense notification:', notificationError.message);
+    }
 
-    // Step 3: Retrieve or create the MonthlyParity for the specified month and year
+    const expenseDate = new Date(expense.date);
+    const month = expenseDate.getMonth() + 1;
+    const year = expenseDate.getFullYear();
     let monthlyParity = await MonthlyParity.findOne({ month, year });
 
-    // Step 4: Calculate updated totalSpent and parityData based on new expense
     const startDate = new Date(`${year}-${String(month).padStart(2, '0')}-01T00:00:00.000Z`);
     const endDate = new Date(startDate);
     endDate.setMonth(startDate.getMonth() + 1);
 
     const expenses = await Expense.aggregate([
-      {
-        $match: {
-          date: { $gte: startDate, $lt: endDate }
-        }
-      },
-      {
-        $group: {
-          _id: "$assigned_to",
-          totalSpent: { $sum: "$amount" }
-        }
-      }
+      { $match: { date: { $gte: startDate, $lt: endDate } } },
+      { $group: { _id: "$assigned_to", totalSpent: { $sum: "$amount" } } }
     ]);
 
     const equitySplit = await EquitySplit.findOne().populate('founders.userId', 'name');
@@ -44,7 +43,10 @@ exports.createExpense = async (req, res) => {
     const totalSpent = expenses.reduce((sum, expense) => sum + expense.totalSpent, 0);
 
     const parityData = equitySplit.founders.map(founder => {
-      const founderExpense = expenses.find(exp => exp._id === founder.userId.name) || { totalSpent: 0 };
+      const founderExpense = expenses.find(exp => 
+        new mongoose.Types.ObjectId(exp._id).equals(founder.userId._id)
+      ) || { totalSpent: 0 };
+
       const expectedContribution = (totalSpent * founder.equity) / 100;
       const disparity = founderExpense.totalSpent - expectedContribution;
 
@@ -57,24 +59,15 @@ exports.createExpense = async (req, res) => {
       };
     });
 
-    // Step 5: Update or create the MonthlyParity entry
     if (monthlyParity) {
-      // Update the existing entry
       monthlyParity.totalSpent = totalSpent;
       monthlyParity.parityData = parityData;
       await monthlyParity.save();
     } else {
-      // Create a new entry if it doesn't exist
-      monthlyParity = new MonthlyParity({
-        month,
-        year,
-        totalSpent,
-        parityData
-      });
+      monthlyParity = new MonthlyParity({ month, year, totalSpent, parityData });
       await monthlyParity.save();
     }
 
-    // Step 6: Return the new expense and updated parity data
     res.status(201).json({ expense, monthlyParity });
   } catch (error) {
     res.status(400).json({ error: error.message });
