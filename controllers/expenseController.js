@@ -167,42 +167,33 @@ exports.getMonthlySummary = async (req, res) => {
   }
 
   try {
-   const summary = await Expense.aggregate([
-  { $match: matchStage }, // Apply filters
-  {
-    $group: {
-      _id: {
-        year: { $year: "$date" },
-        month: { $month: "$date" },
-        user: "$assigned_to",
-        category: "$category",
-        subcategory: "$subcategory"
+    const summary = await Expense.aggregate([
+      { $match: matchStage }, // Apply filters
+      {
+        $group: {
+          _id: {
+            year: { $year: "$date" },
+            month: { $month: "$date" },
+            user: "$assigned_to",
+            category: "$category",
+            subcategory: "$subcategory"
+          },
+          totalAmount: { $sum: "$amount" }
+        }
       },
-      totalAmount: { $sum: "$amount" }
-    }
-  },
-  {
-    $lookup: {
-      from: 'users', // Collection name for users
-      localField: '_id.user',
-      foreignField: '_id',
-      as: 'userDetails'
-    }
-  },
-  {
-    $project: {
-      year: "$_id.year",
-      month: "$_id.month",
-      user: { $arrayElemAt: ["$userDetails.name", 0] }, // Replace user ID with username
-      category: "$_id.category",
-      subcategory: "$_id.subcategory",
-      totalAmount: 1,
-      _id: 0
-    }
-  },
-  { $sort: { year: -1, month: -1, totalAmount: -1 } } // Sort by most recent month and highest amount
-]);
-
+      {
+        $project: {
+          year: "$_id.year",
+          month: "$_id.month",
+          user: "$_id.user",
+          category: "$_id.category",
+          subcategory: "$_id.subcategory",
+          totalAmount: 1,
+          _id: 0
+        }
+      },
+      { $sort: { year: -1, month: -1, totalAmount: -1 } }  // Sort by most recent month and highest amount
+    ]);
 
     res.json(summary);
   } catch (error) {
