@@ -182,18 +182,27 @@ exports.getMonthlySummary = async (req, res) => {
         }
       },
       {
+        $lookup: {
+          from: 'users', // Collection name for users
+          localField: '_id.user',
+          foreignField: '_id',
+          as: 'userDetails'
+        }
+      },
+      {
         $project: {
           year: "$_id.year",
           month: "$_id.month",
-          user: "$_id.user",
+          user: { $arrayElemAt: ["$userDetails.name", 0] }, // Replace user ID with username
           category: "$_id.category",
           subcategory: "$_id.subcategory",
           totalAmount: 1,
           _id: 0
         }
       },
-      { $sort: { year: -1, month: -1, totalAmount: -1 } }  // Sort by most recent month and highest amount
+      { $sort: { year: -1, month: -1, totalAmount: -1 } } // Sort by most recent month and highest amount
     ]);
+    
 
     res.json(summary);
   } catch (error) {
