@@ -113,27 +113,10 @@ exports.getExpenses = async (req, res) => {
   const resultsPerPage = parseInt(limit, 10);
 
   try {
-    // Aggregate query to include user details
-    const expenses = await Expense.aggregate([
-      { $match: query }, // Apply filters
-      {
-        $lookup: {
-          from: 'users', // Collection name for users
-          localField: 'assigned_to', // Field in Expense collection
-          foreignField: '_id', // Field in User collection
-          as: 'userDetails', // Field name for joined data
-        },
-      },
-      {
-        $addFields: {
-          assigned_to: { $arrayElemAt: ['$userDetails.name', 0] }, // Replace user ID with username
-        },
-      },
-      { $project: { userDetails: 0 } }, // Exclude userDetails after adding the username
-      { $sort: sortCondition },
-      { $skip: (pageNumber - 1) * resultsPerPage },
-      { $limit: resultsPerPage },
-    ]);
+    const expenses = await Expense.find(query)
+      .sort(sortCondition)
+      .skip((pageNumber - 1) * resultsPerPage)
+      .limit(resultsPerPage);
 
     // Total count for pagination
     const totalExpenses = await Expense.countDocuments(query);
@@ -148,7 +131,6 @@ exports.getExpenses = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 // Get monthly summary by user, category, and subcategory with optional filters
 exports.getMonthlySummary = async (req, res) => {
