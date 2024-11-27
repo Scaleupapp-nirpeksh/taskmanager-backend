@@ -46,6 +46,7 @@ const allowedOrigins = [
   'https://prod.d13hd8ekmv548z.amplifyapp.com',
   'https://master.dp6erxymzofdg.amplifyapp.com',
   'https://master.d2rgoocsk44jed.amplifyapp.com',
+  'http://localhost:3000'
   // Add any new origins if needed
 ];
 
