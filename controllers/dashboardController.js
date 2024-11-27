@@ -41,7 +41,7 @@ const overdueTasks = tasks.filter(
     };
 
     // Fetch user's expenses
-    const userExpenses = await Expense.find({ assigned_to: userName }); // Use the correct field here
+    const userExpenses = await Expense.find({ assigned_to: userId }); // Use the correct field here
 
     const monthlyExpenses = await MonthlyParity.find({ 'parityData.founderId': userId }).sort({ year: 1, month: 1 });
 

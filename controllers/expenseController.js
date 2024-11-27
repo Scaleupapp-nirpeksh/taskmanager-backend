@@ -114,6 +114,7 @@ exports.getExpenses = async (req, res) => {
 
   try {
     const expenses = await Expense.find(query)
+    .populate('assigned_to', 'name')
       .sort(sortCondition)
       .skip((pageNumber - 1) * resultsPerPage)
       .limit(resultsPerPage);
@@ -132,7 +133,6 @@ exports.getExpenses = async (req, res) => {
   }
 };
 
-// Get monthly summary by user, category, and subcategory with optional filters
 exports.getMonthlySummary = async (req, res) => {
   const { user, category, subcategory, minAmount, maxAmount, startDate, endDate } = req.query;
 
@@ -141,29 +141,29 @@ exports.getMonthlySummary = async (req, res) => {
 
   // Apply user filter
   if (user) {
-    matchStage["assigned_to"] = user;
+    matchStage['assigned_to'] = new mongoose.Types.ObjectId(user);
   }
 
   // Apply category and subcategory filters
   if (category) {
-    matchStage["category"] = category;
+    matchStage['category'] = category;
   }
   if (subcategory) {
-    matchStage["subcategory"] = subcategory;
+    matchStage['subcategory'] = subcategory;
   }
 
   // Apply amount range filter
   if (minAmount || maxAmount) {
-    matchStage["amount"] = {};
-    if (minAmount) matchStage["amount"].$gte = parseFloat(minAmount);
-    if (maxAmount) matchStage["amount"].$lte = parseFloat(maxAmount);
+    matchStage['amount'] = {};
+    if (minAmount) matchStage['amount'].$gte = parseFloat(minAmount);
+    if (maxAmount) matchStage['amount'].$lte = parseFloat(maxAmount);
   }
 
   // Apply date range filter
   if (startDate || endDate) {
-    matchStage["date"] = {};
-    if (startDate) matchStage["date"].$gte = new Date(startDate);
-    if (endDate) matchStage["date"].$lte = new Date(endDate);
+    matchStage['date'] = {};
+    if (startDate) matchStage['date'].$gte = new Date(startDate);
+    if (endDate) matchStage['date'].$lte = new Date(endDate);
   }
 
   try {
@@ -172,27 +172,41 @@ exports.getMonthlySummary = async (req, res) => {
       {
         $group: {
           _id: {
-            year: { $year: "$date" },
-            month: { $month: "$date" },
-            user: "$assigned_to",
-            category: "$category",
-            subcategory: "$subcategory"
+            year: { $year: '$date' },
+            month: { $month: '$date' },
+            user: '$assigned_to',
+            category: '$category',
+            subcategory: '$subcategory',
           },
-          totalAmount: { $sum: "$amount" }
-        }
+          totalAmount: { $sum: '$amount' },
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id.user',
+          foreignField: '_id',
+          as: 'userDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$userDetails',
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $project: {
-          year: "$_id.year",
-          month: "$_id.month",
-          user: "$_id.user",
-          category: "$_id.category",
-          subcategory: "$_id.subcategory",
+          year: '$_id.year',
+          month: '$_id.month',
+          user: { $ifNull: ['$userDetails.name', 'Unassigned'] },
+          category: '$_id.category',
+          subcategory: '$_id.subcategory',
           totalAmount: 1,
-          _id: 0
-        }
+          _id: 0,
+        },
       },
-      { $sort: { year: -1, month: -1, totalAmount: -1 } }  // Sort by most recent month and highest amount
+      { $sort: { year: -1, month: -1, totalAmount: -1 } },
     ]);
 
     res.json(summary);
@@ -200,6 +214,7 @@ exports.getMonthlySummary = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 exports.getMonthlyInvestmentParity = async (req, res) => {
   const { month, year } = req.query;

@@ -22,8 +22,9 @@ const ExpenseSchema = new mongoose.Schema({
     type: String,
   },
   assigned_to: {
-    type: String,
-    default: 'Unassigned',
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
   },
   notes: {
     type: String,
